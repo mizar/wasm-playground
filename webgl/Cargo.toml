@@ -1,0 +1,47 @@
+[package]
+name = "webgl"
+version = "0.1.0"
+authors = ["Mizar <mizar.jp@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+js-sys = "^0.3"
+wasm-bindgen = "^0.2"
+
+[dependencies.wasm-snip]
+# Do not build the executable.
+default-features = false
+
+[dependencies.web-sys]
+version = "^0.3"
+features = [
+    "Attr",
+    "CanvasRenderingContext2d",
+    "CssStyleDeclaration",
+    "Document",
+    "Element",
+    "Event",
+    "EventTarget",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "MouseEvent",
+    "Node",
+    "Text",
+    "WebGlBuffer",
+    "WebGlRenderingContext",
+    "WebGl2RenderingContext",
+    "WebGlProgram",
+    "WebGlShader",
+    "WebGlUniformLocation",
+    "Window"
+]
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+opt-level = "z"

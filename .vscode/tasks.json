@@ -1,0 +1,49 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "webpack-dev-server",
+      "type": "shell",
+      "command": "webpack-dev-server",
+      "problemMatcher": []
+    },
+    {
+      "label": "webpack --mode production",
+      "type": "shell",
+      "command": "webpack --mode production",
+      "problemMatcher": []
+    },
+    {
+      "label": "yarn",
+      "type": "shell",
+      "command": "yarn",
+      "problemMatcher": []
+    },
+    {
+      "label": "yarn outdated",
+      "type": "shell",
+      "command": "yarn outdated",
+      "problemMatcher": []
+    },
+    {
+      "label": "yarn upgrade-interactive",
+      "type": "shell",
+      "command": "yarn upgrade-interactive",
+      "problemMatcher": []
+    },
+    {
+      "label": "ncu -u",
+      "type": "shell",
+      "command": "ncu -u",
+      "problemMatcher": []
+    },
+    {
+      "label": "gitk",
+      "type": "shell",
+      "command": "gitk",
+      "problemMatcher": []
+    }
+  ]
+}
