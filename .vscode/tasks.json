@@ -16,9 +16,9 @@
       "problemMatcher": []
     },
     {
-      "label": "yarn",
+      "label": "yarn install",
       "type": "shell",
-      "command": "yarn",
+      "command": "yarn install",
       "problemMatcher": []
     },
     {
@@ -43,6 +43,18 @@
       "label": "gitk",
       "type": "shell",
       "command": "gitk",
+      "problemMatcher": []
+    },
+    {
+      "label": "rustup update",
+      "type": "shell",
+      "command": "rustup update",
+      "problemMatcher": []
+    },
+    {
+      "label": "rustup self update",
+      "type": "shell",
+      "command": "rustup self update",
       "problemMatcher": []
     }
   ]

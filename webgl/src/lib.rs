@@ -40,8 +40,12 @@ pub fn start() -> Result<(), JsValue> {
     .create_element("canvas")?
     .dyn_into::<web_sys::HtmlCanvasElement>()?;
   body().append_child(&canvas)?;
-  canvas.set_width(640);
-  canvas.set_height(640);
+
+  let canvas_w: u32 = 1024;
+  let canvas_h: u32 = 640;
+
+  canvas.set_width(canvas_w);
+  canvas.set_height(canvas_h);
   canvas.style().set_property("border", "solid")?;
 
   let context = canvas
@@ -73,11 +77,6 @@ pub fn start() -> Result<(), JsValue> {
     in vec4 vPosition;
     out vec4 outColor;
 
-    #define mat4_rotx_sc(s, c) mat4(1., 0., 0., 0., 0., c, s, 0., 0., -(s), c, 0., 0., 0., 0., 1.)
-    #define mat4_roty_sc(s, c) mat4(c, 0., -(s), 0., 0., 1., 0., 0., s, 0., c, 0., 0., 0., 0., 1.)
-    #define mat4_rotz_sc(s, c) mat4(c, s, 0., 0., -(s), c, 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.)
-    #define mat4_mul_add(s, a) mat4(s.x, 0., 0., 0., 0., s.y, 0., 0., 0., 0., s.z, 0., a.x, a.y, a.z, 1.)
-
     // sholder angle
     const float angle_a = radians(18.);
     // side angle
@@ -87,27 +86,85 @@ pub fn start() -> Result<(), JsValue> {
 
     const float sin_a = sin(angle_a);
     const float cos_a = cos(angle_a);
+    const float tan_a = tan(angle_a);
     const float sin_b = sin(angle_b);
     const float cos_b = cos(angle_b);
-    const float tan_b = sin_b / cos_b;
+    const float tan_b = tan(angle_b);
     const float sin_c = sin(angle_c);
     const float cos_c = cos(angle_c);
-    const float tan_c = sin_c / cos_c;
+    const float cos_c_inv = 1.0 / cos(angle_c);
+    const float tan_c = tan(angle_c);
 
     const vec3 vec3_zero = vec3(0., 0., 0.);
     const vec3 vec3_one = vec3(1., 1., 1.);
 
-    float sdPiece_simple(vec3 p, vec3 g) {
-      // Bottom
-      float bo = -(p.y + g.y);
-      // Shoulder
-      float sh = abs(p.x) * sin_a + (p.y - g.y) * cos_a;
-      // Side
-      float si = (abs(p.x) - g.x) * cos_b + (p.y + g.y) * sin_b;
-      // Surface
-      float su = (abs(p.z) - g.z) * cos_c + (p.y + g.y) * sin_c;
+    float dot2( in vec3 v ) { return dot(v,v); }
+    float udQuad( vec3 p, vec3 a, vec3 b, vec3 c, vec3 d )
+    {
+        vec3 ba = b - a; vec3 pa = p - a;
+        vec3 cb = c - b; vec3 pb = p - b;
+        vec3 dc = d - c; vec3 pc = p - c;
+        vec3 ad = a - d; vec3 pd = p - d;
+        vec3 nor = cross( ba, ad );
 
-      return max(max(bo, sh), max(si, su));
+        return sqrt(
+        (sign(dot(cross(ba,nor),pa)) +
+        sign(dot(cross(cb,nor),pb)) +
+        sign(dot(cross(dc,nor),pc)) +
+        sign(dot(cross(ad,nor),pd))<3.0)
+        ?
+        min( min( min(
+        dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+        dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+        dot2(dc*clamp(dot(dc,pc)/dot2(dc),0.0,1.0)-pc) ),
+        dot2(ad*clamp(dot(ad,pd)/dot2(ad),0.0,1.0)-pd) )
+        :
+        dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+    }
+
+    float sdPiece_simple(vec3 p, vec3 g_i) {
+      // boundbox
+      vec3 pg = abs(p) - g_i;
+      float bmax = max(pg.x, max(pg.y, pg.z));
+      if (bmax >= 0.01) return bmax;
+
+      const float xyr = 0.03;
+      const float zr = 0.01;
+      const vec3 r = vec3(vec2(xyr), zr);
+      const vec3 xyzm = vec3(vec2(zr / xyr), 1.0);
+      const vec3 xymz0 = vec3(vec2(zr / xyr), 0.0);
+      vec3 g = g_i - r;
+      float sholl = (g.x - g.y * 2.0 * tan_b) / (cos_a - sin_a * tan_b);
+      float sholw = sholl * cos_a;
+      float sholh = sholl * sin_a;
+      float sidel = (g.y * 2.0 - g.x * tan_a) / (cos_b - sin_b * tan_a);
+      float sidew = sidel * sin_b;
+      float sideh = sidel * cos_b;
+      float head_thick = g.z - g.y * 2.0 * tan_c;
+      float shol_thick = g.z - sideh * tan_c;
+
+      vec3 v3_pabs = vec3(abs(p.x), p.y, abs(p.z));
+      vec3 v3_head = vec3(0.0, g.y, head_thick);
+      vec3 v3_shol = vec3(sholw, (sideh - g.y), shol_thick);
+      vec3 v3_bedg = vec3(g.x, -g.y, g.z);
+      vec3 v3_bcen = vec3(0, -g.y, g.z);
+
+      vec3 v3_pabsm = v3_pabs * xyzm;
+      vec3 v3_headm = v3_head * xyzm;
+      vec3 v3_sholm = v3_shol * xyzm;
+      vec3 v3_bedgm = v3_bedg * xyzm;
+      vec3 v3_bcenm = v3_bcen * xyzm;
+
+      vec3 v3_head0 = v3_head * xymz0;
+      vec3 v3_shol0 = v3_shol * xymz0;
+      vec3 v3_bedg0 = v3_bedg * xymz0;
+      vec3 v3_bcen0 = v3_bcen * xymz0;
+
+      return min(min(min(
+        udQuad(v3_pabsm, v3_headm, v3_bcenm, v3_bedgm, v3_sholm),
+        udQuad(v3_pabsm, v3_headm, v3_sholm, v3_shol0, v3_head0)),
+        udQuad(v3_pabsm, v3_sholm, v3_bedgm, v3_bedg0, v3_shol0)),
+        udQuad(v3_pabsm, v3_bedgm, v3_bcenm, v3_bcen0, v3_bedg0)) - zr;
     }
 
     float distanceHub(vec3 p) {
@@ -118,7 +175,7 @@ pub fn start() -> Result<(), JsValue> {
       const vec3 p_n  = vec3(+1., +.5, 0.); // kNight
       const vec3 p_l  = vec3( 0., +.5, 0.); // Lance
       const vec3 p_p  = vec3(-1., +.5, 0.); // Pawn
-      // half height/width/thick (square height = 1.)
+      // half width/height/thick (square height = 1.)
       const vec3 g_k  = vec3(.371, .413, .125); // King
       const vec3 g_rb = vec3(.358, .400, .120); // Rook, Bishop
       const vec3 g_gs = vec3(.345, .387, .114); // Gold, Silver
@@ -171,48 +228,26 @@ pub fn start() -> Result<(), JsValue> {
 
     void main() {
       const vec3 light = normalize(vec3(-.3, .3, 1.));
-      vec2 p = vPosition.xy;
+      const float err = .001;
+      vec2 p = vPosition.xy * resolution.xy / vec2(max(resolution.x, resolution.y));
       vec3 cPos = vec3(0., 0.,  2.0);
       vec3 cDir = vec3(0., 0., -1.0);
       vec3 cUp  = vec3(0., 1.,  0.0);
       vec3 cSide = cross(cDir, cUp);
       float targetDepth = 1.;
       vec3 ray = normalize(cSide * p.x + cUp * p.y + cDir * targetDepth);
-      float dist;
+      float dist = 10000.;
       float rLen = 0.;
       vec3 rPos = cPos;
-      for(int i = 0; i < 12; ++i){
-        dist = distanceHub(rPos);
-        rLen += dist;
-        rPos = cPos + ray * rLen;
-      }
       for(int i = 0; i < 64; ++i){
         float prevDist = dist;
         dist = distanceHub(rPos);
-          float d = abs(dist);
-          if(d > 1. || d < .001) { break; }
-          if (prevDist * dist < 0.) {
-          float lb = rLen - prevDist;
-          float hb = rLen;
-          rLen = rLen - .5 * prevDist;
-          rPos = cPos + ray * rLen;
-          for (i = 0; i < 32; ++i) {
-            dist = distanceHub(rPos);
-            if (abs(dist) < .001) { break; }
-            if (prevDist * dist < 0.) {
-              hb = rLen;
-            } else {
-              lb = rLen;
-            }
-            rLen = .5 * (hb + lb);
-            rPos = cPos + ray * rLen;
-          }
-          break;
-        }
+        float d = abs(dist);
+        if(d < err || (i > 16 && d > 1.)) { break; }
         rLen += dist;
         rPos = cPos + ray * rLen;
       }
-      if(abs(dist) < .001) {
+      if(abs(dist) < err) {
         vec3 normal = genNormal(rPos);
         float diff = max(dot(normal, light), .2);
         outColor = vec4(vec3(1., .8, .6) * diff, 1.);
@@ -226,15 +261,15 @@ pub fn start() -> Result<(), JsValue> {
   context.use_program(Some(&program));
 
   let u_time = context.get_uniform_location(&program, "time").unwrap();
-  // let u_mouse = context.get_uniform_location(&program, "mouse").unwrap();
-  // let u_resolution = context.get_uniform_location(&program, "resolution").unwrap();
+  //let u_mouse = context.get_uniform_location(&program, "mouse").unwrap();
+  let u_resolution = context.get_uniform_location(&program, "resolution").unwrap();
 
   let vertices: [f32; 18] = [
     -1.0, -1.0, 0.0,
-    1.0, -1.0, 0.0,
-    1.0, 1.0, 0.0,
-    1.0, 1.0, 0.0,
-    -1.0, 1.0, 0.0,
+     1.0, -1.0, 0.0,
+     1.0,  1.0, 0.0,
+     1.0,  1.0, 0.0,
+    -1.0,  1.0, 0.0,
     -1.0, -1.0, 0.0,
   ];
 
@@ -281,6 +316,8 @@ pub fn start() -> Result<(), JsValue> {
     */
 
     context.uniform1f(Some(&u_time), duration);
+    //context.uniform2f(Some(&u_mouse), 0.0 as f32, 0.0 as f32);
+    context.uniform2f(Some(&u_resolution), canvas_w as f32, canvas_h as f32);
 
     context.draw_arrays(
       WebGl2RenderingContext::TRIANGLES,
