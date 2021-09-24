@@ -4,15 +4,21 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "webpack-dev-server",
+      "label": "webpack-dev-server --config webpack.dev.js",
       "type": "shell",
-      "command": "webpack-dev-server",
+      "command": "webpack-dev-server --config webpack.dev.js",
       "problemMatcher": []
     },
     {
-      "label": "webpack --mode production",
+      "label": "webpack --config webpack.prod.js",
       "type": "shell",
-      "command": "webpack --mode production",
+      "command": "webpack --config webpack.prod.js",
+      "problemMatcher": []
+    },
+    {
+      "label": "webpack --config webpack.dev.js",
+      "type": "shell",
+      "command": "webpack --config webpack.dev.js",
       "problemMatcher": []
     },
     {
@@ -34,9 +40,9 @@
       "problemMatcher": []
     },
     {
-      "label": "ncu -u",
+      "label": "npm-check-updates -u",
       "type": "shell",
-      "command": "ncu -u",
+      "command": "npm-check-updates -u",
       "problemMatcher": []
     },
     {
