@@ -304,9 +304,7 @@ pub fn start() -> Result<(), JsValue> {
   let g = f.clone();
 
   let start_time = js_sys::Date::now();
-  let mut i = 0;
   *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-    i += 1;
 
     let now_time = js_sys::Date::now();
     let duration = (now_time - start_time) as f32 * 0.001;
